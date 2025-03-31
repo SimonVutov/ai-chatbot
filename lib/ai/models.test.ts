@@ -113,3 +113,20 @@ export const chat4oMiniModel = new MockLanguageModelV1({
     rawCall: { rawPrompt: null, rawSettings: {} },
   }),
 });
+
+export const reasoningModelO3Mini = new MockLanguageModelV1({
+  doGenerate: async () => ({
+    rawCall: { rawPrompt: null, rawSettings: {} },
+    finishReason: 'stop',
+    usage: { promptTokens: 10, completionTokens: 20 },
+    text: `Hello, world!`,
+  }),
+  doStream: async ({ prompt }) => ({
+    stream: simulateReadableStream({
+      chunkDelayInMs: 50,
+      initialDelayInMs: 100,
+      chunks: getResponseChunksByPrompt(prompt, true),
+    }),
+    rawCall: { rawPrompt: null, rawSettings: {} },
+  }),
+});

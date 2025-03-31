@@ -139,7 +139,7 @@ export async function POST(request: Request) {
                     },
                   ],
                 });
-                console.log("Reasoning saved:", assistantMessage.parts);
+                console.log("assistantMessage Parts after being saved:", assistantMessage);
               } catch (_) {
               }
             }
