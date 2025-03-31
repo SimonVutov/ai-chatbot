@@ -123,6 +123,8 @@ export async function POST(request: Request) {
       ],
     });
 
+    console.log("Message with metadata:", partsWithMetadata);
+
     return createDataStreamResponse({
       execute: (dataStream) => {
         const result = streamText({
