@@ -51,8 +51,22 @@ export async function POST(request: Request) {
       data?: { count: number };
     } = await request.json();
 
+    // Define explicit types for the arrays
+    interface AssistantMessageResponse {
+      text: string;
+      [key: string]: any; // For other potential properties
+    }
+    
+    const assistantMessages: AssistantMessageResponse[] = [];
     if (data && data.count) {
       console.log("Count from request:", data.count);
+      const count = data.count;
+      
+      for (let i = 0; i < count; i++) {
+        const assistantMessage = await generateAssistantMessage(messages[messages.length - 1]);
+        console.log("Assistant Message:", assistantMessage.text);
+        assistantMessages.push(assistantMessage);
+      }
     }
 
     const session = await auth();
@@ -81,13 +95,28 @@ export async function POST(request: Request) {
       }
     }
 
+    const evaluations: string[] = [];
+    evaluations.push("Python Word Counter");
+
+    // Save the user message first
+    const partsWithMetadata = [
+      ...userMessage.parts,
+      {
+        type: 'metadata',
+        metadata: {
+          assistantMessages: assistantMessages,
+          evaluationSet: evaluations
+        }
+      }
+    ];
+
     await saveMessages({
       messages: [
         {
           chatId: id,
           id: userMessage.id,
           role: 'user',
-          parts: userMessage.parts,
+          parts: partsWithMetadata,
           attachments: userMessage.experimental_attachments ?? [],
           createdAt: new Date(),
         },
