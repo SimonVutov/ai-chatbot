@@ -139,6 +139,7 @@ export async function POST(request: Request) {
                     },
                   ],
                 });
+                console.log("Reasoning saved:", assistantMessage.parts);
               } catch (_) {
               }
             }
