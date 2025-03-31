@@ -102,12 +102,22 @@ function PureMultimodalInput({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
+  const [count, setCount] = useState('1');
+
+  const handleCountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setCount(event.target.value);
+  };
 
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
+    // Use append instead of handleSubmit to include count in the body
+    const countValue = parseInt(count, 10) || 1;
+    
+    // Send the message through the regular channel
     handleSubmit(undefined, {
       experimental_attachments: attachments,
+      data: { count: countValue }, // Add count through data property
     });
 
     setAttachments([]);
@@ -124,6 +134,7 @@ function PureMultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
+    count,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -250,7 +261,7 @@ function PureMultimodalInput({
 
       <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-        <CountSelector />
+        <CountSelector count={count} setCount={handleCountChange} />
         <Evaluator/>
       </div>
 
@@ -305,18 +316,17 @@ function PureAttachmentsButton({
 
 const AttachmentsButton = memo(PureAttachmentsButton);
 
-const CountSelector = () => {
-  const [count, setCount] = useState('1');
+type CountSelectorProps = {
+  count: string;
+  setCount: (event: React.ChangeEvent<HTMLInputElement>) => void;
+};
 
-  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCount(event.target.value);
-  };
-
+const CountSelector = ({ count, setCount }: CountSelectorProps) => {
   return (
     <input
       type="text"
       value={count}
-      onChange={handleChange}
+      onChange={setCount}
       placeholder="Count"
       className="ml-2 rounded-md p-2 hover:dark:bg-zinc-900 hover:bg-zinc-200 w-12 bg-transparent"
     />

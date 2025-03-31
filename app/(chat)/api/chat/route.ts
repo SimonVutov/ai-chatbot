@@ -2,6 +2,7 @@ import {
   UIMessage,
   appendResponseMessages,
   createDataStreamResponse,
+  generateText,
   smoothStream,
   streamText,
 } from 'ai';
@@ -28,19 +29,31 @@ import { myProvider } from '@/lib/ai/providers';
 
 export const maxDuration = 60;
 
-
-
 export async function POST(request: Request) {
+  async function generateAssistantMessage(userMessage: UIMessage, selectedChatModel="chat-model-4o-mini") {
+    const response = await generateText({
+      model: myProvider.languageModel(selectedChatModel),
+      prompt: JSON.stringify(userMessage),
+    });
+    return response;
+  }
+
   try {
     const {
       id,
       messages,
       selectedChatModel,
+      data,
     }: {
       id: string;
       messages: Array<UIMessage>;
       selectedChatModel: string;
+      data?: { count: number };
     } = await request.json();
+
+    if (data && data.count) {
+      console.log("Count from request:", data.count);
+    }
 
     const session = await auth();
 
