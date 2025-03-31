@@ -30,6 +30,7 @@ import { myProvider } from '@/lib/ai/providers';
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
+  // TODO: Make it properly asynchronous, all in parallel
   async function generateAssistantMessage(userMessage: UIMessage, selectedChatModel="chat-model-4o-mini") {
     const response = await generateText({
       model: myProvider.languageModel(selectedChatModel),
@@ -124,6 +125,9 @@ export async function POST(request: Request) {
     });
 
     console.log("Message with metadata:", partsWithMetadata);
+    console.log("Assistant Messages:", partsWithMetadata[0]);
+    // TODO: continue here. Save them, have a button to show raw data on left of comment
+    // have a button to show each evaluation result and a score out of 100
 
     return createDataStreamResponse({
       execute: (dataStream) => {
