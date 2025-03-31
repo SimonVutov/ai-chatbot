@@ -28,6 +28,8 @@ import { myProvider } from '@/lib/ai/providers';
 
 export const maxDuration = 60;
 
+
+
 export async function POST(request: Request) {
   try {
     const {

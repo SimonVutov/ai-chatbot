@@ -250,6 +250,8 @@ function PureMultimodalInput({
 
       <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+        <CountSelector />
+        <Evaluator/>
       </div>
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
@@ -302,6 +304,44 @@ function PureAttachmentsButton({
 }
 
 const AttachmentsButton = memo(PureAttachmentsButton);
+
+const CountSelector = () => {
+  const [count, setCount] = useState('1');
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setCount(event.target.value);
+  };
+
+  return (
+    <input
+      type="text"
+      value={count}
+      onChange={handleChange}
+      placeholder="Count"
+      className="ml-2 rounded-md p-2 hover:dark:bg-zinc-900 hover:bg-zinc-200 w-12 bg-transparent"
+    />
+  );
+};
+
+const Evaluator = () => {
+  const [evaluator, setEvaluator] = useState('option1');
+
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setEvaluator(event.target.value);
+  };
+
+  return (
+    <select
+      value={evaluator}
+      onChange={handleChange}
+      className="ml-2 rounded-md p-2 hover:dark:bg-zinc-900 hover:bg-zinc-200 w-32 bg-transparent"
+    >
+      <option value="option1">No Evaluation</option>
+      <option value="option2">Python Word Counter</option>
+      <option value="option3">LLM Evaluator (4o-mini)</option>
+    </select>
+  );
+};
 
 function PureStopButton({
   stop,
