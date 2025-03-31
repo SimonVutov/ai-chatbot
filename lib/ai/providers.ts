@@ -32,6 +32,7 @@ export const myProvider = isTestEnvironment
         }),
         'chat-model-4o': openai('gpt-4o'),
         'chat-model-4o-mini': openai('gpt-4o-mini'),
+        'reasoning-model-o3-mini': openai('o3-mini'),
         'title-model': xai('grok-2-1212'),
         'artifact-model': xai('grok-2-1212'),
       },
