@@ -5,6 +5,7 @@ import {
 } from 'ai';
 import { groq } from '@ai-sdk/groq';
 import { xai } from '@ai-sdk/xai';
+import { openai } from '@ai-sdk/openai';
 import { isTestEnvironment } from '../constants';
 import {
   artifactModel,
@@ -29,6 +30,8 @@ export const myProvider = isTestEnvironment
           model: groq('deepseek-r1-distill-llama-70b'),
           middleware: extractReasoningMiddleware({ tagName: 'think' }),
         }),
+        'chat-model-4o': openai('gpt-4o'),
+        'chat-model-4o-mini': openai('gpt-4o-mini'),
         'title-model': xai('grok-2-1212'),
         'artifact-model': xai('grok-2-1212'),
       },

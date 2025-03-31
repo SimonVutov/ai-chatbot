@@ -28,6 +28,7 @@ const db = drizzle(client);
 
 export async function getUser(email: string): Promise<Array<User>> {
   try {
+    console.log(`Getting user from database ${process.env.POSTGRES_URL} + ${email}`);
     return await db.select().from(user).where(eq(user.email, email));
   } catch (error) {
     console.error('Failed to get user from database');

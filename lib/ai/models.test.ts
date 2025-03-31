@@ -77,3 +77,39 @@ export const artifactModel = new MockLanguageModelV1({
     rawCall: { rawPrompt: null, rawSettings: {} },
   }),
 });
+
+// 4o model - identical behavior to chat model for testing
+export const chat4oModel = new MockLanguageModelV1({
+  doGenerate: async () => ({
+    rawCall: { rawPrompt: null, rawSettings: {} },
+    finishReason: 'stop',
+    usage: { promptTokens: 10, completionTokens: 20 },
+    text: `Hello, world!`,
+  }),
+  doStream: async ({ prompt }) => ({
+    stream: simulateReadableStream({
+      chunkDelayInMs: 50,
+      initialDelayInMs: 100,
+      chunks: getResponseChunksByPrompt(prompt),
+    }),
+    rawCall: { rawPrompt: null, rawSettings: {} },
+  }),
+});
+
+// 4o mini model - slightly faster response time for testing
+export const chat4oMiniModel = new MockLanguageModelV1({
+  doGenerate: async () => ({
+    rawCall: { rawPrompt: null, rawSettings: {} },
+    finishReason: 'stop',
+    usage: { promptTokens: 10, completionTokens: 20 },
+    text: `Hello, world!`,
+  }),
+  doStream: async ({ prompt }) => ({
+    stream: simulateReadableStream({
+      chunkDelayInMs: 30, // Faster chunk delivery
+      initialDelayInMs: 50, // Faster initial response
+      chunks: getResponseChunksByPrompt(prompt),
+    }),
+    rawCall: { rawPrompt: null, rawSettings: {} },
+  }),
+});
