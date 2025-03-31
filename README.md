@@ -67,6 +67,8 @@ run migrations:
 pnpm db:migrate
 ```
 
+Then set the env variable to POSTGRES_URL=postgres://postgres:yourpassword@0.0.0.0:5433/yourdbname
+
 You will need to use the environment variables [defined in `.env.example`](.env.example) to run Next.js AI Chatbot. It's recommended you use [Vercel Environment Variables](https://vercel.com/docs/projects/environment-variables) for this, but a `.env` file is all that is necessary.
 
 > Note: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various AI and authentication provider accounts.
