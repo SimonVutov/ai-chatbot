@@ -11,7 +11,7 @@ import FileUpload from "@/app/(chat)/documents/FileUpload";
 import { formatFileSize } from "@/app/(chat)/documents/fileUtils";
 import { DocumentManager, type DocumentItem } from "@/components/DocumentManager";
 import HoverPreview from "@/components/HoverPreview";
-
+import { GoogleIcon } from "@/components/icons";
 // Configure axios defaults
 axios.defaults.withCredentials = true;
 
@@ -81,11 +81,11 @@ const dataSources: DataSource[] = [
     }) => (
       isConnected ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 bg-blue-50 p-2 rounded-md">
+          <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 p-2 rounded-md">
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <p className="text-sm text-blue-700">Connected as: <span className="font-medium">{connectedEmail}</span></p>
+            <p className="text-sm text-gray-800 dark:text-gray-200">Connected as: <span className="font-medium">{connectedEmail}</span></p>
           </div>
           
           <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ const dataSources: DataSource[] = [
           {syncProgress > 0 && (
             <div className="space-y-1">
               <p className="text-xs text-gray-500">Syncing in progress...</p>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div 
                   className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
                   style={{ width: `${syncProgress}%` }}
@@ -139,9 +139,7 @@ const dataSources: DataSource[] = [
             onClick={onConnect}
             className="w-full"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm-2 16h-2v-6h2v6zm-1-6.891c-.607 0-1.1-.496-1.1-1.109 0-.612.492-1.109 1.1-1.109s1.1.497 1.1 1.109c0 .613-.493 1.109-1.1 1.109zm8 6.891h-1.998v-2.861c0-1.881-2.002-1.722-2.002 0v2.861h-2v-6h2v1.093c.872-1.616 4-1.736 4 1.548v3.359z" />
-            </svg>
+            <GoogleIcon />
             Connect with Google
           </Button>
         </div>
