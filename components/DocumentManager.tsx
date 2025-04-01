@@ -1,5 +1,7 @@
 'use client';
 
+import axios from 'axios';
+
 export interface DocumentItem {
   id: string;
   type: 'document';
@@ -21,35 +23,17 @@ interface FileSystemItem {
 export class DocumentManager {
   /**
    * Load the file system with documents and folders
-   * This is a mock implementation - in a real app this would fetch from an API
    */
   static async loadFileSystem(): Promise<FileSystemItem[]> {
-    // Mock data
-    return [
-      {
-        id: 'doc1',
-        type: 'document',
-        title: 'Getting Started Guide',
-        plainText: 'This is a guide to help you get started with our platform.',
-        sizeInBytes: 2048,
-        updatedAt: '2023-04-15T14:30:00Z',
-      },
-      {
-        id: 'doc2',
-        type: 'document',
-        title: 'API Documentation',
-        plainText: 'Comprehensive API documentation with examples and use cases.',
-        sizeInBytes: 5120,
-        updatedAt: '2023-04-10T09:15:00Z',
-      },
-      {
-        id: 'doc3',
-        type: 'document',
-        title: 'Project Notes',
-        plainText: 'Notes from our last meeting about the project requirements.',
-        sizeInBytes: 1024,
-        updatedAt: '2023-04-18T16:45:00Z',
-      },
-    ] as FileSystemItem[];
+    // Get API base URL from environment or use fallback
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+    
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/documents/`);
+      return response.data.documents || [];
+    } catch (error) {
+      console.error("Error loading documents:", error);
+      return [];
+    }
   }
 } 

@@ -5,7 +5,7 @@ import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SidebarToggle } from '@/components/sidebar-toggle';
+import { PlusCircle, File, Database } from "lucide-react";
 import AddDataSourceDialog from "@/components/AddDataSourceDialog";
 import FileUpload from "@/app/(chat)/documents/FileUpload";
 import { formatFileSize } from "@/app/(chat)/documents/fileUtils";
@@ -171,13 +171,13 @@ const dataSources: DataSource[] = [
   },
 ];
 
-export default function IntegrationsPage() {
+export default function ManageDataSources() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [connectedEmail, setConnectedEmail] = useState<string | null>(null);
   const [syncProgress, setSyncProgress] = useState(0);
   const [syncedCount, setSyncedCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
-  const [apiError, setApiError] = useState(true);
+  const [apiError, setApiError] = useState(false);
   
   // Search-related state
   const [query, setQuery] = useState("");
@@ -191,7 +191,24 @@ export default function IntegrationsPage() {
   const [documentSearchMetrics, setDocumentSearchMetrics] = useState<{ count: number; time: number } | null>(null);
 
   // Ensure consistent API base URL usage
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '';
+  const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
+
+  // Add CSRF token handling here
+  useEffect(() => {
+    // Function to get CSRF token from cookies
+    const getCookie = (name: string): string | null => {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${name}=`);
+      if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+      return null;
+    };
+    
+    // Set CSRF token in axios headers
+    const csrftoken = getCookie('csrftoken');
+    if (csrftoken) {
+      axios.defaults.headers.common['X-CSRFToken'] = csrftoken;
+    }
+  }, []);
 
   // Check connection status on mount
   useEffect(() => {
@@ -210,8 +227,40 @@ export default function IntegrationsPage() {
       }
     };
 
-    // Comment this out to keep the API error shown for demo purposes
-    // checkConnectionStatus();
+    checkConnectionStatus();
+  }, [API_BASE_URL]);
+
+  // Add debugging information:
+  // Check connection status on mount
+  useEffect(() => {
+    // Log API URL for debugging
+    console.log("Using API URL:", API_BASE_URL);
+
+    const checkConnectionStatus = async () => {
+      const url = `${API_BASE_URL}/api/google/status`;
+      console.log("Checking connection status at:", url);
+      
+      try {
+        const response = await axios.get(url);
+        console.log("Connection status response:", response.data);
+        setConnectedEmail(response.data.email);
+        setIsConnected(response.data.connected);
+        setSyncedCount(response.data.synced_count || 0);
+        setApiError(false);
+      } catch (error) {
+        console.error("Connection status check failed:", error);
+        if (axios.isAxiosError(error)) {
+          console.error("Status:", error.response?.status);
+          console.error("Data:", error.response?.data);
+          console.error("Headers:", error.response?.headers);
+        }
+        setApiError(true);
+        setIsConnected(false);
+        setConnectedEmail(null);
+      }
+    };
+
+    checkConnectionStatus();
   }, [API_BASE_URL]);
 
   // Handle search functionality
@@ -220,33 +269,20 @@ export default function IntegrationsPage() {
 
     setIsLoading(true);
     try {
-      // This is a mock implementation - in a real app it would call an API
-      await new Promise(r => setTimeout(r, 1000)); // Simulate API call
+      const response = await axios.get(`${API_BASE_URL}/api/search`, {
+        params: { q: query },
+      });
       
-      // Mock search results
-      const mockResults = query ? [
-        {
-          filename: 'annual_report_2023.pdf',
-          match: 85,
-          content_snippet: `Contains "${query}" in section 3.4 of the annual financial report...`,
-          format: 'PDF',
-          size: 2500000,
-          dateAdded: '2023-12-10',
-        },
-        {
-          filename: 'project_proposal.docx',
-          match: 72,
-          content_snippet: `Project proposal mentioning "${query}" in context of market analysis...`,
-          format: 'DOCX',
-          size: 450000,
-          dateAdded: '2023-11-15',
-        }
-      ] as SearchResult[] : [];
+      // Deduplicate results based on filename
+      const results = response.data.results || [] as SearchResult[];
+      const uniqueResults = Array.from(
+        new Map(results.map((result: SearchResult) => [result.filename, result])).values()
+      ) as SearchResult[];
       
-      setSearchResults(mockResults);
+      setSearchResults(uniqueResults);
       setSearchMetrics({
-        count: mockResults.length,
-        time: 120, // Mock time in ms
+        count: uniqueResults.length || 0,
+        time: response.data.time || 100,
       });
     } catch (error) {
       console.error("Search error:", error);
@@ -255,7 +291,7 @@ export default function IntegrationsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [query]);
+  }, [query, API_BASE_URL]);
 
   // Search in lexical documents
   const searchDocuments = useCallback(async (searchQuery: string) => {
@@ -268,41 +304,29 @@ export default function IntegrationsPage() {
     setIsLoadingDocuments(true);
     try {
       const startTime = performance.now();
-      const fileSystem = await DocumentManager.loadFileSystem();
       
-      // Filter documents based on search term
-      const results = fileSystem.filter(item => {
-        if (item.type !== 'document') return false;
-        
-        const doc = item as DocumentItem;
-        const searchLower = searchQuery.toLowerCase();
-        
-        // Check title
-        if (doc.title.toLowerCase().includes(searchLower)) {
-          return true;
-        }
-        
-        // Check plain text content
-        if (doc.plainText && doc.plainText.toLowerCase().includes(searchLower)) {
-          return true;
-        }
-        
-        return false;
-      }) as DocumentItem[];
+      // Instead of loading all documents and filtering locally,
+      // call the API with search query directly
+      const response = await axios.get(`${API_BASE_URL}/api/documents/search`, {
+        params: { q: searchQuery }
+      });
       
+      const results = response.data.results || [];
       const endTime = performance.now();
       
       setDocumentResults(results);
       setDocumentSearchMetrics({
         count: results.length,
-        time: Math.round(endTime - startTime)
+        time: response.data.time || Math.round(endTime - startTime)
       });
     } catch (error) {
       console.error("Error searching documents:", error);
+      setDocumentResults([]);
+      setDocumentSearchMetrics({ count: 0, time: 0 });
     } finally {
       setIsLoadingDocuments(false);
     }
-  }, []);
+  }, [API_BASE_URL]);
 
   // Combined search effect
   useEffect(() => {
@@ -323,11 +347,8 @@ export default function IntegrationsPage() {
   // Handle Google Drive connection
   const handleGoogleConnect = async () => {
     try {
-      // This would open the Google OAuth flow in a real implementation
-      alert("This would redirect to Google auth in a real implementation");
-      setIsConnected(true);
-      setConnectedEmail("demo@example.com");
-      setSyncedCount(12);
+      const response = await axios.get(`${API_BASE_URL}/api/auth/google/url`);
+      window.location.href = response.data.url;
     } catch (error) {
       console.error("Failed to get auth URL:", error);
       alert("Could not connect to Google Drive. Please try again later.");
@@ -338,19 +359,20 @@ export default function IntegrationsPage() {
   const handleSync = async () => {
     try {
       setSyncProgress(10); // Start progress indicator
-      
-      // Simulate sync process
-      for (let i = 20; i <= 90; i += 10) {
-        await new Promise(r => setTimeout(r, 300));
-        setSyncProgress(i);
+      const response = await axios.post(`${API_BASE_URL}/api/google/sync`);
+      if (response.data.success) {
+        setSyncedCount(response.data.synced_count);
+        setSyncProgress(100);
+        setTimeout(() => setSyncProgress(0), 1000); // Reset after showing 100%
+        
+        // Refresh connection status to get updated sync count
+        const statusResponse = await axios.get(`${API_BASE_URL}/api/google/status`);
+        setIsConnected(statusResponse.data.connected);
+        setConnectedEmail(statusResponse.data.email);
+      } else {
+        console.error("Sync failed:", response.data.error);
+        setSyncProgress(0);
       }
-      
-      // Complete sync
-      setSyncedCount(prev => prev + 3);
-      setSyncProgress(100);
-      
-      // Reset progress bar after showing 100%
-      setTimeout(() => setSyncProgress(0), 1000);
     } catch (error) {
       console.error("Failed to sync:", error);
       setSyncProgress(0);
@@ -359,8 +381,7 @@ export default function IntegrationsPage() {
 
   const handleGoogleDisconnect = async () => {
     try {
-      // Simulate disconnect
-      await new Promise(r => setTimeout(r, 500));
+      await axios.get(`${API_BASE_URL}/api/google/disconnect`);
       setIsConnected(false);
       setConnectedEmail(null);
       setSyncedCount(0);
@@ -371,24 +392,15 @@ export default function IntegrationsPage() {
   };
 
   const handleUpload = async (file: File) => {
-    // Simulate upload
-    await new Promise(r => setTimeout(r, 2000));
-    console.log('File uploaded:', file.name);
-    // In a real implementation, this would send the file to your backend
+    // This is a stub function - the actual upload is now handled by the
+    // FileUpload component itself via XMLHttpRequest for progress tracking
+    return Promise.resolve();
   };
 
   const handleFileClick = async (filename: string) => {
     try {
-      // Simulate API call to get file content
-      await new Promise(r => setTimeout(r, 500));
-      
-      // Mock file content
-      const mockFile = {
-        ...searchResults.find(r => r.filename === filename)!,
-        content: `This is the simulated content of ${filename}.\n\nIt would contain the full text of the document in a real implementation.\n\nThe actual content would be retrieved from your database or storage system.`
-      };
-      
-      setSelectedFile(mockFile);
+      const response = await axios.get(`${API_BASE_URL}/api/file/${filename}`);
+      setSelectedFile(response.data);
       setShowModal(true);
     } catch (error) {
       console.error("Error fetching file:", error);
@@ -400,10 +412,15 @@ export default function IntegrationsPage() {
     setSelectedFile(null);
   };
 
-  const handleAddDataSource = (dataSource: { name: string; type: string }) => {
-    // Here you would typically call an API to add a new data source
-    console.log("Adding data source:", dataSource);
-    setIsAddDialogOpen(false);
+  const handleAddDataSource = async (dataSource: { name: string; type: string }) => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/datasources/`, dataSource);
+      // Optionally refresh the data sources list after adding
+      setIsAddDialogOpen(false);
+    } catch (error) {
+      console.error("Failed to add data source:", error);
+      alert("Could not add data source. Please try again later.");
+    }
   };
 
   // Handler for source connections based on source ID
@@ -412,10 +429,35 @@ export default function IntegrationsPage() {
       case "google-drive":
         return isConnected ? handleGoogleDisconnect : handleGoogleConnect;
       case "dropbox":
+        return async () => {
+          try {
+            const response = await axios.get(`${API_BASE_URL}/api/auth/dropbox/url`);
+            window.location.href = response.data.url;
+          } catch (error) {
+            console.error("Failed to get Dropbox auth URL:", error);
+            alert("Could not connect to Dropbox. Please try again later.");
+          }
+        };
       case "sharepoint":
-        return () => console.log(`Connect to ${sourceId} clicked`);
+        return async () => {
+          try {
+            const response = await axios.get(`${API_BASE_URL}/api/auth/sharepoint/url`);
+            window.location.href = response.data.url;
+          } catch (error) {
+            console.error("Failed to get SharePoint auth URL:", error);
+            alert("Could not connect to SharePoint. Please try again later.");
+          }
+        };
       default:
-        return () => console.log(`Action for ${sourceId} not implemented`);
+        return async () => {
+          try {
+            await axios.post(`${API_BASE_URL}/api/datasources/connect`, { sourceId });
+            alert(`Connection initiated for ${sourceId}`);
+          } catch (error) {
+            console.error(`Failed to connect to ${sourceId}:`, error);
+            alert(`Could not connect to ${sourceId}. Please try again later.`);
+          }
+        };
     }
   };
 
@@ -435,236 +477,218 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="flex flex-col min-w-0 h-dvh bg-background">
-      <header className="flex sticky top-0 bg-background py-1.5 items-center px-2 md:px-2 gap-2">
-        <SidebarToggle />
-        <h1 className="text-xl font-semibold">Data Management</h1>
-      </header>
-
-      <div className="flex-1 overflow-auto px-4 md:px-6 py-4 max-w-5xl mx-auto w-full">
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-sm text-gray-500">Search your documents and connect to data sources</p>
-            </div>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <svg xmlns="http://www.w3.org/2000/svg" className="mr-2 h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-              </svg>
-              Add Data Source
-            </Button>
-          </div>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-bold">Data Management</h1>
+          <p className="text-sm text-gray-500">Search your documents and connect to data sources</p>
+        </div>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Data Source
+        </Button>
+      </div>
 
           {apiError && (
-            <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md text-yellow-800 mb-6 flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 rounded text-sm flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+          </svg>
               API connection error. Some features may not work properly.
             </div>
           )}
 
-          {/* Combined Search Section */}
-          <div className="border rounded-lg p-4">
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search documents..."
+      {/* Combined Search Section */}
+      <div className="border rounded-lg p-3">
+            <Input 
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search documents..."
               className="w-full"
             />
 
-            <div className="flex flex-wrap gap-2 mt-1">
-              {searchMetrics && (
-                <div className="text-xs text-gray-500 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
-                    <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
-                    <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
-                  </svg>
-                  <span>Database: {searchMetrics.count} {searchMetrics.count === 1 ? "result" : "results"} in {searchMetrics.time}ms</span>
-                </div>
-              )}
-              {documentSearchMetrics && (
-                <div className="text-xs text-gray-500 flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                  </svg>
-                  <span>Documents: {documentSearchMetrics.count} {documentSearchMetrics.count === 1 ? "result" : "results"} in {documentSearchMetrics.time}ms</span>
-                </div>
-              )}
+        <div className="flex flex-wrap gap-2 mt-1">
+          {searchMetrics && (
+            <div className="text-xs text-gray-500 flex items-center">
+              <Database className="h-3 w-3 mr-1" />
+              <span>Database: {searchMetrics.count} {searchMetrics.count === 1 ? "result" : "results"} in {searchMetrics.time}ms</span>
             </div>
-
-            <div className="mt-3 space-y-2">
-              {/* Database search results */}
-              {(isLoading || searchResults.length > 0) && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Database Results</h3>
-                  {isLoading ? (
-                    <div className="flex justify-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700"></div>
-                    </div>
-                  ) : (
-                    searchResults.length > 0 ? (
-                      searchResults.map((result) => (
-                        <Card key={result.filename} className="cursor-pointer hover:bg-gray-50 transition-colors duration-200 mb-2" onClick={() => handleFileClick(result.filename)}>
-                          <CardContent className="p-3">
-                            <div className="flex items-center gap-2">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M3 12v3c0 1.657 3.134 3 7 3s7-1.343 7-3v-3c0 1.657-3.134 3-7 3s-7-1.343-7-3z" />
-                                <path d="M3 7v3c0 1.657 3.134 3 7 3s7-1.343 7-3V7c0 1.657-3.134 3-7 3S3 8.657 3 7z" />
-                                <path d="M17 5c0 1.657-3.134 3-7 3S3 6.657 3 5s3.134-3 7-3 7 1.343 7 3z" />
-                              </svg>
-                              <div className="flex flex-col md:flex-row md:items-center md:gap-3 w-full min-w-0">
-                                <h3 className="font-medium text-sm truncate">{result.filename}</h3>
-                                <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 flex-1 min-w-0">
-                                  <span className="truncate">{result.content_snippet}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
-                                  <span>{result.format}</span>
-                                  <span>•</span>
-                                  <span>{formatFileSize(result.size)}</span>
-                                  <span>•</span>
-                                  <span>Added: {result.dateAdded}</span>
-                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                                    {result.match}% Match
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <div className="md:hidden mt-1">
-                              <p className="text-xs text-gray-600 line-clamp-1">{result.content_snippet}</p>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))
-                    ) : query.trim() ? (
-                      <div className="text-center py-2 text-gray-500 text-sm">
-                        No database results found.
-                      </div>
-                    ) : null
-                  )}
-                </div>
-              )}
-
-              {/* Document search results */}
-              {(isLoadingDocuments || documentResults.length > 0) && (
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Document Results</h3>
-                  {isLoadingDocuments ? (
-                    <div className="flex justify-center py-4">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700"></div>
-                    </div>
-                  ) : (
-                    documentResults.length > 0 ? (
-                      documentResults.map((doc) => (
-                        <HoverPreview key={doc.id} content={doc.plainText || 'No content'}>
-                          <Card className="cursor-pointer hover:bg-gray-50 transition-colors duration-200 mb-2" onClick={() => handleDocumentClick(doc.id)}>
-                            <CardContent className="p-3">
-                              <div className="flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                                  <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
-                                </svg>
-                                <div className="flex flex-col md:flex-row md:items-center md:gap-3 w-full min-w-0">
-                                  <h3 className="font-medium text-sm truncate">{doc.title}</h3>
-                                  <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 flex-1 min-w-0">
-                                    <span className="truncate">{doc.plainText?.substring(0, 100) || 'No content'}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
-                                    <span>Document</span>
-                                    <span>•</span>
-                                    <span>Size: {formatFileSize(doc.sizeInBytes || 0)}</span>
-                                    <span>•</span>
-                                    <span>Updated: {formatDate(doc.updatedAt)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        </HoverPreview>
-                      ))
-                    ) : query.trim() ? (
-                      <div className="text-center py-2 text-gray-500 text-sm">
-                        No document results found.
-                      </div>
-                    ) : null
-                  )}
-                </div>
-              )}
-
-              {/* No results message */}
-              {query.trim() && !isLoading && !isLoadingDocuments && searchResults.length === 0 && documentResults.length === 0 && (
-                <div className="text-center py-4 text-gray-500 text-sm">
-                  No results found. Try a different search term.
-                </div>
-              )}
+          )}
+          {documentSearchMetrics && (
+            <div className="text-xs text-gray-500 flex items-center">
+              <File className="h-3 w-3 mr-1" />
+              <span>Documents: {documentSearchMetrics.count} {documentSearchMetrics.count === 1 ? "result" : "results"} in {documentSearchMetrics.time}ms</span>
             </div>
+          )}
           </div>
 
-          {/* Data sources grid - more compact */}
-          <div className="mt-6">
-            <h2 className="text-xl font-semibold mb-4">Connect Your Data</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {dataSources.map((source) => (
-                <Card key={source.id} className={`hover:shadow-sm transition-shadow duration-200 ${source.disabled ? 'opacity-70' : ''}`}>
-                  <CardHeader className="py-3 px-4">
-                    <CardTitle className="text-base">{source.name}</CardTitle>
-                    <CardDescription className="text-xs">{source.description}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    {source.renderComponent ? (
-                      source.id === "google-drive" ? (
-                        source.renderComponent({
-                          isConnected,
-                          connectedEmail,
-                          syncedCount,
-                          syncProgress,
-                          onConnect: handleGoogleConnect,
-                          onSync: handleSync,
-                          onDisconnect: handleGoogleDisconnect
-                        })
-                      ) : source.id === "file-upload" ? (
-                        source.renderComponent({ onUpload: handleUpload })
-                      ) : null
-                    ) : (
-                      <Button 
-                        className="w-full" 
-                        disabled={source.disabled}
-                        variant={source.disabled ? "outline" : "default"}
-                        onClick={source.disabled ? undefined : handleSourceAction(source.id)}
-                      >
-                        {typeof source.buttonText === 'string' ? source.buttonText : 'Connect'}
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+        <div className="mt-3 space-y-2">
+          {/* Database search results */}
+          {(isLoading || searchResults.length > 0) && (
+            <div>
+              <h3 className="text-sm font-medium mb-2">Database Results</h3>
+              {isLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700"></div>
+                </div>
+              ) : (
+                searchResults.length > 0 ? (
+                  searchResults.map((result) => (
+                    <Card key={result.filename} className="cursor-pointer hover:bg-gray-50 transition-colors duration-200 mb-2" onClick={() => handleFileClick(result.filename)}>
+                      <CardContent className="p-3">
+                        <div className="flex items-center gap-2">
+                          <Database className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                          <div className="flex flex-col md:flex-row md:items-center md:gap-3 w-full min-w-0">
+                            <h3 className="font-medium text-sm truncate">{result.filename}</h3>
+                            <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 flex-1 min-w-0">
+                              <span className="truncate">{result.content_snippet}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
+                              <span>{result.format}</span>
+                              <span>•</span>
+                              <span>{formatFileSize(result.size)}</span>
+                              <span>•</span>
+                              <span>Added: {result.dateAdded}</span>
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
+                                {result.match}% Match
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="md:hidden mt-1">
+                          <p className="text-xs text-gray-600 line-clamp-1">{result.content_snippet}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : query.trim() ? (
+                  <div className="text-center py-2 text-gray-500 text-sm">
+                    No database results found.
+                  </div>
+                ) : null
+              )}
             </div>
-          </div>
+          )}
 
-          <AddDataSourceDialog
-            isOpen={isAddDialogOpen}
-            onClose={() => setIsAddDialogOpen(false)}
-            onAddDataSource={handleAddDataSource}
-          />
+          {/* Document search results */}
+          {(isLoadingDocuments || documentResults.length > 0) && (
+            <div>
+              <h3 className="text-sm font-medium mb-2">Document Results</h3>
+              {isLoadingDocuments ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700"></div>
+                </div>
+              ) : (
+                documentResults.length > 0 ? (
+                  documentResults.map((doc) => (
+                    <HoverPreview key={doc.id} content={doc.plainText || 'No content'}>
+                      <Card className="cursor-pointer hover:bg-gray-50 transition-colors duration-200 mb-2" onClick={() => handleDocumentClick(doc.id)}>
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-2">
+                            <File className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <div className="flex flex-col md:flex-row md:items-center md:gap-3 w-full min-w-0">
+                              <h3 className="font-medium text-sm truncate">{doc.title}</h3>
+                              <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 flex-1 min-w-0">
+                                <span className="truncate">{doc.plainText?.substring(0, 100) || 'No content'}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
+                                <span>Document</span>
+                                <span>•</span>
+                                <span>Size: {formatFileSize(doc.sizeInBytes || 0)}</span>
+                                <span>•</span>
+                                <span>Updated: {formatDate(doc.updatedAt)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </HoverPreview>
+                  ))
+                ) : query.trim() ? (
+                  <div className="text-center py-2 text-gray-500 text-sm">
+                    No document results found.
+                  </div>
+                ) : null
+              )}
+            </div>
+          )}
 
-          {/* File View Modal */}
-          {showModal && selectedFile && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeModal}>
-              <div className="bg-white dark:bg-gray-800 rounded-lg w-3/4 max-h-[80vh] overflow-auto p-4" onClick={(e) => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-2">
-                  <h2 className="text-lg font-bold">{selectedFile.filename}</h2>
-                  <Button variant="ghost" size="sm" onClick={closeModal}>
-                    Close
-                  </Button>
-                </div>
-                <div className="border rounded p-3 bg-gray-50 dark:bg-gray-900 overflow-auto">
-                  <pre className="whitespace-pre-wrap text-sm">{selectedFile.content}</pre>
-                </div>
-              </div>
+          {/* No results message */}
+          {query.trim() && !isLoading && !isLoadingDocuments && searchResults.length === 0 && documentResults.length === 0 && (
+            <div className="text-center py-4 text-gray-500 text-sm">
+              No results found. Try a different search term.
             </div>
           )}
         </div>
+              </div>
+              
+      {/* Data sources grid - more compact */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        {dataSources.map((source) => (
+          <Card key={source.id} className={`hover:shadow-sm transition-shadow duration-200 ${source.disabled ? 'opacity-70' : ''}`}>
+            <CardHeader className="py-2 px-3">
+              <CardTitle className="text-base">{source.name}</CardTitle>
+              <CardDescription className="text-xs">{source.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="p-3">
+              {source.renderComponent ? (
+                source.id === "google-drive" ? (
+                  source.renderComponent({
+                    isConnected,
+                    connectedEmail,
+                    syncedCount,
+                    syncProgress,
+                    onConnect: handleGoogleConnect,
+                    onSync: handleSync,
+                    onDisconnect: handleGoogleDisconnect
+                  })
+                ) : source.id === "file-upload" ? (
+                  source.renderComponent({ onUpload: handleUpload })
+                ) : null
+              ) : (
+                <Button 
+                  className="w-full" 
+                  disabled={source.disabled}
+                  variant={source.disabled ? "outline" : "default"}
+                  onClick={source.disabled ? undefined : handleSourceAction(source.id)}
+                >
+                  {typeof source.buttonText === 'string' ? source.buttonText : 'Connect'}
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+              </div>
+              
+      <AddDataSourceDialog
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        onAddDataSource={handleAddDataSource}
+      />
+
+      {/* File View Modal */}
+      {showModal && selectedFile && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeModal}>
+          <div className="bg-white rounded-lg w-3/4 max-h-[80vh] overflow-auto p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-2">
+              <h2 className="text-lg font-bold">{selectedFile.filename}</h2>
+              <Button variant="ghost" size="sm" onClick={closeModal}>
+                Close
+              </Button>
+              </div>
+            <div className="border rounded p-3 bg-gray-50 overflow-auto">
+              <pre className="whitespace-pre-wrap text-sm">{selectedFile.content}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Debug info - remove in production */}
+      {process.env.NODE_ENV === "development" && (
+        <div className="text-xs text-gray-400">
+          API URL: {API_BASE_URL}
       </div>
+      )}
     </div>
   );
 } 

@@ -25,39 +25,57 @@ export default function FileUpload({ onUpload }: FileUploadProps) {
     if (!selectedFile) return;
 
     setIsUploading(true);
-    setUploadProgress(10);
+    setUploadProgress(0);
+
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+    const formData = new FormData();
+    formData.append('file', selectedFile);
 
     try {
-      // Simulate upload progress
-      const interval = setInterval(() => {
-        setUploadProgress(prev => {
-          const newProgress = prev + 10;
-          if (newProgress >= 90) {
-            clearInterval(interval);
-            return 90;
+      return new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percentComplete);
           }
-          return newProgress;
         });
-      }, 500);
-
-      await onUpload(selectedFile);
-      
-      // Complete the progress bar
-      clearInterval(interval);
-      setUploadProgress(100);
-      
-      // Reset after a slight delay
-      setTimeout(() => {
-        setSelectedFile(null);
-        setUploadProgress(0);
-        setIsUploading(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      }, 1000);
+        
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            // Success
+            setUploadProgress(100);
+            setTimeout(() => {
+              setSelectedFile(null);
+              setUploadProgress(0);
+              setIsUploading(false);
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+            }, 1000);
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+            setIsUploading(false);
+            setUploadProgress(0);
+          }
+        });
+        
+        xhr.addEventListener('error', () => {
+          reject(new Error('Upload failed'));
+          setIsUploading(false);
+          setUploadProgress(0);
+        });
+        
+        xhr.open('POST', `${API_BASE_URL}/api/upload`);
+        xhr.withCredentials = true;
+        xhr.send(formData);
+      });
     } catch (error) {
       console.error('Upload failed:', error);
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
