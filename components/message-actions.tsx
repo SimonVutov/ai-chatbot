@@ -3,7 +3,7 @@ import { useSWRConfig } from 'swr';
 import { useCopyToClipboard } from 'usehooks-ts';
 
 import type { Vote } from '@/lib/db/schema';
-import { evaluateText, evaluators, type EvaluationResult } from '@/lib/evaluation';
+import { evaluateText, evaluators, type EvaluationResult, type EvaluationFunction } from '@/lib/evaluation';
 
 import { CopyIcon, ThumbDownIcon, ThumbUpIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 import { Button } from './ui/button';
@@ -27,10 +27,11 @@ interface AssistantMessageWithEval {
 
 interface MessageMetadata {
   assistantMessages?: AssistantMessageWithEval[];
+  evaluationSet?: string[];
 }
 
 interface MessagePart {
-  type: string;
+  type: string; // Using string to allow for any type value
   text?: string;
   metadata?: MessageMetadata;
 }
@@ -56,18 +57,32 @@ export function PureMessageActions({
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessageWithEval[]>([]);
 
   useEffect(() => {
-    // Find metadata part that contains assistantMessages
-    // @ts-ignore - type cast to handle custom message format
-    const metadataPart = message.parts?.find(part => part.type === 'metadata');
-    
-    if (metadataPart?.metadata?.assistantMessages) {
-      // Run evaluations on each assistant message
-      const messagesWithEvaluations = metadataPart.metadata.assistantMessages.map((msg: AssistantMessageWithEval) => ({
-        ...msg,
-        evaluations: evaluateText(msg.text, evaluators)
-      }));
+    // Process the message to extract metadata
+    if (message.parts && message.parts.length > 0) {
+      // Cast to any to bypass type checking
+      const parts = message.parts as any[];
+      const metadataPart = parts.find(part => part.type === 'metadata');
       
-      setAssistantMessages(messagesWithEvaluations);
+      if (metadataPart?.metadata?.assistantMessages) {
+        // Get selected evaluator IDs from metadata
+        const selectedEvaluatorIds = metadataPart.metadata.evaluationSet || [];
+        
+        // Filter evaluators based on selection
+        const filteredEvaluators = selectedEvaluatorIds.length > 0
+          ? evaluators.filter(evaluator => {
+              const result = evaluator('');
+              return selectedEvaluatorIds.includes(result.id);
+            })
+          : [];
+        
+        // Run evaluations on each assistant message
+        const messagesWithEvaluations = metadataPart.metadata.assistantMessages.map((msg: AssistantMessageWithEval) => ({
+          ...msg,
+          evaluations: evaluateText(msg.text, filteredEvaluators)
+        }));
+        
+        setAssistantMessages(messagesWithEvaluations);
+      }
     }
   }, [message]);
 
