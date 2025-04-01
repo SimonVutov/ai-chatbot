@@ -103,6 +103,7 @@ function PureMultimodalInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
   const [count, setCount] = useState('1');
+  const [evaluator, setEvaluator] = useState('none');
 
   const handleCountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setCount(event.target.value);
@@ -111,13 +112,16 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
-    // Use append instead of handleSubmit to include count in the body
-    const countValue = parseInt(count, 10) || 1;
+    // Get the current evaluator setting from localStorage
+    const currentEvaluator = localStorage.getItem('selectedEvaluator') || 'none';
     
     // Send the message through the regular channel
     handleSubmit(undefined, {
       experimental_attachments: attachments,
-      data: { count: countValue }, // Add count through data property
+      data: { 
+        count: parseInt(count, 10) || 1,
+        evaluator: currentEvaluator 
+      },
     });
 
     setAttachments([]);
@@ -334,21 +338,34 @@ const CountSelector = ({ count, setCount }: CountSelectorProps) => {
 };
 
 const Evaluator = () => {
-  const [evaluator, setEvaluator] = useState('option1');
+  const [evaluator, setEvaluator] = useState('none');
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setEvaluator(event.target.value);
+    
+    // Store the selected evaluator in local storage
+    localStorage.setItem('selectedEvaluator', event.target.value);
   };
+
+  // Load selected evaluator from local storage on component mount
+  useEffect(() => {
+    const savedEvaluator = localStorage.getItem('selectedEvaluator');
+    if (savedEvaluator) {
+      setEvaluator(savedEvaluator);
+    }
+  }, []);
 
   return (
     <select
       value={evaluator}
       onChange={handleChange}
       className="ml-2 rounded-md p-2 hover:dark:bg-zinc-900 hover:bg-zinc-200 w-32 bg-transparent"
+      data-testid="evaluator-selector"
     >
-      <option value="option1">No Evaluation</option>
-      <option value="option2">Python Word Counter</option>
-      <option value="option3">LLM Evaluator (4o-mini)</option>
+      <option value="none">No Evaluation</option>
+      <option value="word-counter">Word Counter</option>
+      <option value="char-counter">Character Counter</option>
+      <option value="both">Both Counters</option>
     </select>
   );
 };

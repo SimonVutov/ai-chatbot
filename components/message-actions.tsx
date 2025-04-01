@@ -3,6 +3,7 @@ import { useSWRConfig } from 'swr';
 import { useCopyToClipboard } from 'usehooks-ts';
 
 import type { Vote } from '@/lib/db/schema';
+import { evaluateText, type EvaluationResult } from '@/lib/evaluation';
 
 import { CopyIcon, ThumbDownIcon, ThumbUpIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 import { Button } from './ui/button';
@@ -12,10 +13,31 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
-import { memo, useState } from 'react';
+import { memo, useState, useEffect } from 'react';
 import equal from 'fast-deep-equal';
 import { toast } from 'sonner';
+// @ts-ignore - temporary ignore to fix build
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+
+// Extended Message type to include metadata
+interface AssistantMessageWithEval {
+  text: string;
+  evaluations?: EvaluationResult[];
+}
+
+interface MessageMetadata {
+  assistantMessages?: AssistantMessageWithEval[];
+}
+
+interface MessagePart {
+  type: string;
+  text?: string;
+  metadata?: MessageMetadata;
+}
+
+type ExtendedMessage = Message & {
+  parts?: MessagePart[];
+};
 
 export function PureMessageActions({
   chatId,
@@ -24,23 +46,34 @@ export function PureMessageActions({
   isLoading,
 }: {
   chatId: string;
-  message: Message;
+  message: ExtendedMessage;
   vote: Vote | undefined;
   isLoading: boolean;
 }) {
   const { mutate } = useSWRConfig();
   const [_, copyToClipboard] = useCopyToClipboard();
   const [isOpen, setIsOpen] = useState(false);
+  const [assistantMessages, setAssistantMessages] = useState<AssistantMessageWithEval[]>([]);
+
+  useEffect(() => {
+    // Find metadata part that contains assistantMessages
+    // @ts-ignore - type cast to handle custom message format
+    const metadataPart = message.parts?.find(part => part.type === 'metadata');
+    
+    if (metadataPart?.metadata?.assistantMessages) {
+      // Run evaluations on each assistant message
+      const messagesWithEvaluations = metadataPart.metadata.assistantMessages.map((msg: AssistantMessageWithEval) => ({
+        ...msg,
+        evaluations: evaluateText(msg.text)
+      }));
+      
+      setAssistantMessages(messagesWithEvaluations);
+    }
+  }, [message]);
 
   if (isLoading) return null;
   if (message.role === 'user') return null;
 
-  // Find metadata part that contains assistantMessages
-  const metadataPart = message.parts?.find(part => 
-    part.type === 'metadata' && part.metadata?.assistantMessages
-  );
-  
-  const assistantMessages = metadataPart?.metadata?.assistantMessages || [];
   const hasAssistantMessages = assistantMessages.length > 0;
 
   return (
@@ -183,7 +216,7 @@ export function PureMessageActions({
           {hasAssistantMessages && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full hidden">
+                <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
                   <CollapsibleTrigger asChild>
                     <Button
                       data-testid="message-alternatives"
@@ -208,6 +241,16 @@ export function PureMessageActions({
                 <div key={index} className="p-3 border rounded-md bg-muted/50">
                   <div className="text-xs text-muted-foreground mb-1">Alternative {index + 1}</div>
                   <div className="text-sm">{msg.text}</div>
+                  {msg.evaluations && msg.evaluations.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-dashed flex flex-wrap gap-2">
+                      {msg.evaluations.map((evaluation, evalIndex) => (
+                        <div key={evalIndex} className="text-xs px-2 py-1 bg-muted rounded-full flex items-center">
+                          <span className="font-medium">{evaluation.name}:</span>
+                          <span className="ml-1">{evaluation.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </CollapsibleContent>
