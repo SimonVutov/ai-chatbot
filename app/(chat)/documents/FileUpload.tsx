@@ -51,13 +51,13 @@ export default function FileUpload() {
         e.preventDefault();
         if (selectedFiles.length === 0) return;
 
-        setMessage(`Uploading ${selectedFiles.length} files...`);
         setIsUploading(true); // Set uploading state to true
 
         let successCount = 0;
         for (const file of selectedFiles) {
             const success = await uploadFile(file);
             if (success) successCount++;
+            setMessage(`Uploaded ${successCount}/${selectedFiles.length} files`); // Update message during upload
         }
 
         setMessage(`Successfully uploaded ${successCount} of ${selectedFiles.length} files`);
@@ -130,7 +130,7 @@ export default function FileUpload() {
                 </div>
             )}
 
-            {message && <p className="upload-message text-red-600">{message}</p>}
+            {message && <p className="upload-message text-black">{message}</p>} {/* Changed text color to black */}
         </div>
     );
 }
