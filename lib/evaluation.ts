@@ -35,6 +35,6 @@ export const evaluators: EvaluationFunction[] = [
 ];
 
 // Run all evaluators on a given text
-export const evaluateText = (text: string): EvaluationResult[] => {
+export const evaluateText = (text: string, evaluators: EvaluationFunction[]): EvaluationResult[] => {
   return evaluators.map(evaluator => evaluator(text));
 }; 

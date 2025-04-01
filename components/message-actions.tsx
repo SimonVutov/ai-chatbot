@@ -3,7 +3,7 @@ import { useSWRConfig } from 'swr';
 import { useCopyToClipboard } from 'usehooks-ts';
 
 import type { Vote } from '@/lib/db/schema';
-import { evaluateText, type EvaluationResult } from '@/lib/evaluation';
+import { evaluateText, evaluators, type EvaluationResult } from '@/lib/evaluation';
 
 import { CopyIcon, ThumbDownIcon, ThumbUpIcon, ChevronDownIcon, ChevronUpIcon } from './icons';
 import { Button } from './ui/button';
@@ -64,7 +64,7 @@ export function PureMessageActions({
       // Run evaluations on each assistant message
       const messagesWithEvaluations = metadataPart.metadata.assistantMessages.map((msg: AssistantMessageWithEval) => ({
         ...msg,
-        evaluations: evaluateText(msg.text)
+        evaluations: evaluateText(msg.text, evaluators)
       }));
       
       setAssistantMessages(messagesWithEvaluations);
