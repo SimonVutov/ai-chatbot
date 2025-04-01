@@ -77,9 +77,9 @@ export default function FileUpload() {
     };
 
     return (
-        <div className="space-y-4 p-4 border-2 border-dashed border-gray-300 rounded-lg">
+        <div className="space-y-4 p-4 rounded-lg">
             <div
-                className="drop-zone p-4 border-2 border-dashed border-gray-400 rounded-lg text-center cursor-pointer hover:bg-gray-100 transition"
+                className="drop-zone p-4 rounded-lg text-center cursor-pointer bg-secondary hover:bg-primary/10 transition"
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
             >
