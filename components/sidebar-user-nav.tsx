@@ -18,7 +18,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { IntegrationIcon } from './icons';
+import { IntegrationIcon, LightThemeIcon, DarkThemeIcon, SignoutIcon } from './icons';
 
 export function SidebarUserNav({ user }: { user: User }) {
   const { setTheme, theme } = useTheme();
@@ -49,7 +49,8 @@ export function SidebarUserNav({ user }: { user: User }) {
               className="cursor-pointer"
               onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             >
-              {`Toggle ${theme === 'light' ? 'dark' : 'light'} mode`}
+              {theme === 'light' ? <LightThemeIcon size={16} /> : <DarkThemeIcon size={16} />}
+              {`Toggle to ${theme === 'light' ? 'dark' : 'light'} mode`}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -72,7 +73,8 @@ export function SidebarUserNav({ user }: { user: User }) {
                   });
                 }}
               >
-                Sign out
+                <SignoutIcon size={16} />
+                <span className="ml-2">Sign out</span>
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
