@@ -477,10 +477,10 @@ export default function ManageDataSources() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
+    <div className="w-full max-w-5xl mx-auto px-4 py-6 space-y-6">
+      <div className="flex justify-between items-center pb-2 border-b">
         <div>
-          <h1 className="text-xl font-bold">Data Management</h1>
+          <h1 className="text-2xl font-bold">Data Management</h1>
           <p className="text-sm text-gray-500">Search your documents and connect to data sources</p>
         </div>
         <Button onClick={() => setIsAddDialogOpen(true)}>
@@ -489,23 +489,23 @@ export default function ManageDataSources() {
         </Button>
       </div>
 
-          {apiError && (
+      {apiError && (
         <div className="bg-amber-50 border border-amber-200 text-amber-800 px-3 py-2 rounded text-sm flex items-center">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-              API connection error. Some features may not work properly.
-            </div>
-          )}
+          API connection error. Some features may not work properly.
+        </div>
+      )}
 
       {/* Combined Search Section */}
-      <div className="border rounded-lg p-3">
-            <Input 
+      <div className="border rounded-lg p-4 bg-white shadow-sm">
+        <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search documents..."
-              className="w-full"
-            />
+          className="w-full"
+        />
 
         <div className="flex flex-wrap gap-2 mt-1">
           {searchMetrics && (
@@ -520,7 +520,7 @@ export default function ManageDataSources() {
               <span>Documents: {documentSearchMetrics.count} {documentSearchMetrics.count === 1 ? "result" : "results"} in {documentSearchMetrics.time}ms</span>
             </div>
           )}
-          </div>
+        </div>
 
         <div className="mt-3 space-y-2">
           {/* Database search results */}
@@ -570,48 +570,6 @@ export default function ManageDataSources() {
             </div>
           )}
 
-          {/* Document search results */}
-          {(isLoadingDocuments || documentResults.length > 0) && (
-            <div>
-              <h3 className="text-sm font-medium mb-2">Document Results</h3>
-              {isLoadingDocuments ? (
-                <div className="flex justify-center py-4">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-700"></div>
-                </div>
-              ) : (
-                documentResults.length > 0 ? (
-                  documentResults.map((doc) => (
-                    <HoverPreview key={doc.id} content={doc.plainText || 'No content'}>
-                      <Card className="cursor-pointer hover:bg-gray-50 transition-colors duration-200 mb-2" onClick={() => handleDocumentClick(doc.id)}>
-                        <CardContent className="p-3">
-                          <div className="flex items-center gap-2">
-                            <File className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                            <div className="flex flex-col md:flex-row md:items-center md:gap-3 w-full min-w-0">
-                              <h3 className="font-medium text-sm truncate">{doc.title}</h3>
-                              <div className="hidden md:flex items-center gap-2 text-xs text-gray-500 flex-1 min-w-0">
-                                <span className="truncate">{doc.plainText?.substring(0, 100) || 'No content'}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-xs text-gray-500 whitespace-nowrap flex-shrink-0">
-                                <span>Document</span>
-                                <span>•</span>
-                                <span>Size: {formatFileSize(doc.sizeInBytes || 0)}</span>
-                                <span>•</span>
-                                <span>Updated: {formatDate(doc.updatedAt)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </HoverPreview>
-                  ))
-                ) : query.trim() ? (
-                  <div className="text-center py-2 text-gray-500 text-sm">
-                    No document results found.
-                  </div>
-                ) : null
-              )}
-            </div>
-          )}
 
           {/* No results message */}
           {query.trim() && !isLoading && !isLoadingDocuments && searchResults.length === 0 && documentResults.length === 0 && (
@@ -620,17 +578,17 @@ export default function ManageDataSources() {
             </div>
           )}
         </div>
-              </div>
-              
+      </div>
+
       {/* Data sources grid - more compact */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {dataSources.map((source) => (
-          <Card key={source.id} className={`hover:shadow-sm transition-shadow duration-200 ${source.disabled ? 'opacity-70' : ''}`}>
-            <CardHeader className="py-2 px-3">
+          <Card key={source.id} className={`overflow-hidden hover:shadow transition-shadow duration-200 ${source.disabled ? 'opacity-70' : ''}`}>
+            <CardHeader className="py-3 px-4 bg-gray-50">
               <CardTitle className="text-base">{source.name}</CardTitle>
               <CardDescription className="text-xs">{source.description}</CardDescription>
             </CardHeader>
-            <CardContent className="p-3">
+            <CardContent className="p-4">
               {source.renderComponent ? (
                 source.id === "google-drive" ? (
                   source.renderComponent({
@@ -658,8 +616,8 @@ export default function ManageDataSources() {
             </CardContent>
           </Card>
         ))}
-              </div>
-              
+      </div>
+
       <AddDataSourceDialog
         isOpen={isAddDialogOpen}
         onClose={() => setIsAddDialogOpen(false)}
@@ -669,14 +627,14 @@ export default function ManageDataSources() {
       {/* File View Modal */}
       {showModal && selectedFile && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeModal}>
-          <div className="bg-white rounded-lg w-3/4 max-h-[80vh] overflow-auto p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="flex justify-between items-center mb-2">
+          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[80vh] overflow-auto p-4 mx-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg font-bold">{selectedFile.filename}</h2>
               <Button variant="ghost" size="sm" onClick={closeModal}>
                 Close
               </Button>
-              </div>
-            <div className="border rounded p-3 bg-gray-50 overflow-auto">
+            </div>
+            <div className="border rounded p-4 bg-gray-50 overflow-auto">
               <pre className="whitespace-pre-wrap text-sm">{selectedFile.content}</pre>
             </div>
           </div>
@@ -685,9 +643,9 @@ export default function ManageDataSources() {
 
       {/* Debug info - remove in production */}
       {process.env.NODE_ENV === "development" && (
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-gray-400 mt-8 pt-4 border-t">
           API URL: {API_BASE_URL}
-      </div>
+        </div>
       )}
     </div>
   );
