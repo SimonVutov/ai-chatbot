@@ -307,7 +307,7 @@ export default function ManageDataSources() {
       
       // Instead of loading all documents and filtering locally,
       // call the API with search query directly
-      const response = await axios.get(`${API_BASE_URL}/api/documents/search`, {
+      const response = await axios.get(`${API_BASE_URL}/api/search`, {
         params: { q: searchQuery }
       });
       
