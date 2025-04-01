@@ -142,9 +142,7 @@ export async function POST(request: Request) {
 
     console.log("Message with metadata:", partsWithMetadata);
     console.log("Assistant Messages array:", assistantMessages);
-    // TODO: continue here. Save them, have a button to show raw data on left of comment
-    // have a button to show each evaluation result and a score out of 100
-
+    
     return createDataStreamResponse({
       execute: (dataStream) => {
         const result = streamText({

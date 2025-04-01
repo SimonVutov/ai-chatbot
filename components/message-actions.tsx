@@ -183,7 +183,7 @@ export function PureMessageActions({
           {hasAssistantMessages && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full">
+                <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full hidden">
                   <CollapsibleTrigger asChild>
                     <Button
                       data-testid="message-alternatives"

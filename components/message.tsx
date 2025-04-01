@@ -100,7 +100,7 @@ const PurePreviewMessage = ({
                   className="inline-flex items-center px-2 py-1 rounded-full bg-muted/50 text-muted-foreground hover:bg-muted cursor-pointer"
                 >
                   <span className="mr-1">{isAlternativesOpen ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}</span> 
-                  {assistantMessages.length} alternative responses available
+                  {assistantMessages.length} {assistantMessages.length == 1 ? "alternative" : "alternatives"}
                 </button>
               </div>
             )}
