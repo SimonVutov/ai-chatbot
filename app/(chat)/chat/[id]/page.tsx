@@ -35,7 +35,17 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   });
 
   function convertToUIMessages(messages: Array<DBMessage>): Array<UIMessage> {
-    return messages.map((message) => ({
+    console.log("Converting DB messages to UI messages:", 
+      messages.map(m => ({
+        id: m.id,
+        role: m.role,
+        partsTypes: (m.parts as any[])?.map(p => p.type),
+        hasMetadata: (m.parts as any[])?.some(p => p.type === 'metadata'),
+        metadataPart: (m.parts as any[])?.find(p => p.type === 'metadata')
+      }))
+    );
+    
+    const uiMessages = messages.map((message) => ({
       id: message.id,
       parts: message.parts as UIMessage['parts'],
       role: message.role as UIMessage['role'],
@@ -45,6 +55,17 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       experimental_attachments:
         (message.attachments as Array<Attachment>) ?? [],
     }));
+    
+    console.log("Converted UI messages:", 
+      uiMessages.map(m => ({
+        id: m.id,
+        role: m.role,
+        partsTypes: m.parts?.map(p => p.type),
+        hasMetadata: m.parts?.some(p => p.type === 'metadata')
+      }))
+    );
+    
+    return uiMessages;
   }
 
   const cookieStore = await cookies();

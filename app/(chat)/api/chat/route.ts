@@ -114,6 +114,19 @@ export async function POST(request: Request) {
       }
     ];
 
+    console.log("User message with metadata:", {
+      messageId: userMessage.id,
+      assistantMessagesCount: assistantMessages.length,
+      assistantMessages: JSON.stringify(assistantMessages, null, 2),
+      metadataStructure: JSON.stringify({
+        type: 'metadata',
+        metadata: {
+          assistantMessages: assistantMessages,
+          evaluationSet: evaluations
+        }
+      }, null, 2)
+    });
+
     await saveMessages({
       messages: [
         {
@@ -192,8 +205,15 @@ export async function POST(request: Request) {
                 ];
 
                 console.log("Saving assistant message with metadata:", {
-                  assistantMessages,
-                  evaluations
+                  assistantMessages: JSON.stringify(assistantMessages, null, 2),
+                  evaluations,
+                  metadataStructure: JSON.stringify({
+                    type: 'metadata',
+                    metadata: {
+                      assistantMessages: assistantMessages,
+                      evaluationSet: evaluations
+                    }
+                  }, null, 2)
                 });
 
                 await saveMessages({

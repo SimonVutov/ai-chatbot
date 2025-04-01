@@ -44,18 +44,23 @@ const PurePreviewMessage = ({
   // Extract assistantMessages from metadata if available
   let assistantMessages: any[] = [];
   try {
+    // Debug the entire message structure
+    console.log("Full message structure:", message.id, JSON.stringify(message, null, 2));
+    
     // Use type assertion to handle the metadata
     const metadataPart = message.parts?.find((part: any) => part.type === 'metadata') as any;
+    console.log("Metadata part found:", message.id, metadataPart ? JSON.stringify(metadataPart, null, 2) : "No metadata part found");
+    
     if (metadataPart?.metadata?.assistantMessages) {
       assistantMessages = metadataPart.metadata.assistantMessages;
-      console.log("Found assistantMessages in message:", message.id, assistantMessages);
+      console.log("Found assistantMessages in message:", message.id, JSON.stringify(assistantMessages, null, 2));
     }
   } catch (error) {
     console.error('Error extracting assistantMessages:', error);
   }
 
   // Debug output for message parts
-  console.log("Message parts:", message.id, message.parts?.map(p => p.type));
+  console.log("Message parts:", message.id, message.parts?.map(p => ({ type: p.type, keys: Object.keys(p) })));
   
   // For debugging - check if we have alternatives
   const hasAlternatives = assistantMessages.length > 0;
@@ -254,7 +259,7 @@ const PurePreviewMessage = ({
                 onOpenChange={setIsAlternativesOpen}
                 className="w-full border rounded-md bg-muted/50 mt-2"
               >
-                <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/80">
+                <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/80 hidden">
                   <h4 className="text-sm font-semibold">Alternative Responses ({assistantMessages.length})</h4>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="p-0 h-8 w-8 hover:bg-muted">
