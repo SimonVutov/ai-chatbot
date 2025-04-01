@@ -1,7 +1,7 @@
 // Evaluation functions for alternative responses
 
 export type EvaluationResult = {
-  id: string; // Unique descriptive ID
+  id: string; // Unique descriptive short ID
   name: string;
   value: number | string;
 };

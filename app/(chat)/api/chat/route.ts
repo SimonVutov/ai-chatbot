@@ -49,7 +49,10 @@ export async function POST(request: Request) {
       id: string;
       messages: Array<UIMessage>;
       selectedChatModel: string;
-      data?: { count: number };
+      data?: { 
+        count: number;
+        evaluators: string[];
+      };
     } = await request.json();
 
     // Define explicit types for the arrays
@@ -99,9 +102,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const evaluations: string[] = [];
-    evaluations.push("Python Word Counter");
-
+    // Get the selected evaluators from the request data
+    const evaluations: string[] = data?.evaluators || [];
+    console.log("Selected evaluators:", evaluations);
+    
     // Save the user message first
     const partsWithMetadata = [
       ...userMessage.parts,
@@ -118,6 +122,7 @@ export async function POST(request: Request) {
       messageId: userMessage.id,
       assistantMessagesCount: assistantMessages.length,
       assistantMessages: JSON.stringify(assistantMessages, null, 2),
+      evaluations: evaluations,
       metadataStructure: JSON.stringify({
         type: 'metadata',
         metadata: {

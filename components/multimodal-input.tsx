@@ -23,6 +23,7 @@ import { Textarea } from './ui/textarea';
 import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import { UseChatHelpers } from '@ai-sdk/react';
+import { evaluators } from '@/lib/evaluation';
 
 function PureMultimodalInput({
   chatId,
@@ -103,7 +104,7 @@ function PureMultimodalInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
   const [count, setCount] = useState('1');
-  const [evaluator, setEvaluator] = useState('none');
+  const [selectedEvaluators, setSelectedEvaluators] = useState<string[]>([]);
   
   // Use a ref to track the current count value
   const countRef = useRef('1');
@@ -116,8 +117,14 @@ function PureMultimodalInput({
     console.log(countRef.current);
   };
 
-  const handleEvaluatorChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setEvaluator(event.target.value);
+  const toggleEvaluator = (evaluatorId: string) => {
+    setSelectedEvaluators(prev => {
+      if (prev.includes(evaluatorId)) {
+        return prev.filter(id => id !== evaluatorId);
+      } else {
+        return [...prev, evaluatorId];
+      }
+    });
   };
 
   const submitForm = useCallback(() => {
@@ -131,7 +138,7 @@ function PureMultimodalInput({
       experimental_attachments: attachments,
       data: { 
         count: countValue,
-        evaluator: evaluator
+        evaluators: selectedEvaluators
       },
     });
 
@@ -149,8 +156,7 @@ function PureMultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
-    // Remove count from dependencies since we're using the ref
-    evaluator,
+    selectedEvaluators,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -278,7 +284,11 @@ function PureMultimodalInput({
       <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
         <CountSelector count={count} setCount={handleCountChange} />
-        <EvaluatorSelector evaluator={evaluator} setEvaluator={handleEvaluatorChange} />
+        <EvaluatorSelector 
+          selectedEvaluators={selectedEvaluators} 
+          toggleEvaluator={toggleEvaluator}
+          setSelectedEvaluators={setSelectedEvaluators}
+        />
       </div>
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
@@ -358,25 +368,44 @@ const CountSelector = ({ count, setCount }: CountSelectorProps) => {
 };
 
 type EvaluatorSelectorProps = {
-  evaluator: string;
-  setEvaluator: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+  selectedEvaluators: string[];
+  toggleEvaluator: (evaluatorId: string) => void;
+  setSelectedEvaluators: React.Dispatch<React.SetStateAction<string[]>>;
 };
 
-
-
-const EvaluatorSelector = ({ evaluator, setEvaluator }: EvaluatorSelectorProps) => {
+const EvaluatorSelector = ({ selectedEvaluators, toggleEvaluator, setSelectedEvaluators }: EvaluatorSelectorProps) => {
   return (
-    <select
-      value={evaluator}
-      onChange={setEvaluator}
-      className="ml-2 rounded-md p-2 hover:dark:bg-zinc-900 hover:bg-zinc-200 w-32 bg-transparent"
-      data-testid="evaluator-selector"
-    >
-      <option value="none">No Evaluation</option>
-      <option value="word-counter">Word Counter</option>
-      <option value="char-counter">Character Counter</option>
-      <option value="both">Both Counters</option>
-    </select>
+    <div className="ml-2 flex flex-row gap-1 flex-wrap">
+      <button
+        onClick={() => setSelectedEvaluators([])}
+        className={`px-2 py-1 rounded-md text-xs ${
+          selectedEvaluators.length === 0
+            ? 'bg-blue-500 text-white'
+            : 'bg-gray-200 dark:bg-zinc-700 text-gray-800 dark:text-gray-200'
+        }`}
+        type="button"
+      >
+        None
+      </button>
+      {evaluators.map((evalFunc) => {
+        // Get the ID by calling the function with an empty string to get its result
+        const evalResult = evalFunc('');
+        return (
+          <button
+            key={evalResult.id}
+            onClick={() => toggleEvaluator(evalResult.id)}
+            className={`px-2 py-1 rounded-md text-xs ${
+              selectedEvaluators.includes(evalResult.id)
+                ? 'bg-blue-500 text-white'
+                : 'bg-gray-200 dark:bg-zinc-700 text-gray-800 dark:text-gray-200'
+            }`}
+            type="button"
+          >
+            {evalResult.name}
+          </button>
+        );
+      })}
+    </div>
   );
 };
 
