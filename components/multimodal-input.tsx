@@ -104,23 +104,34 @@ function PureMultimodalInput({
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
   const [count, setCount] = useState('1');
   const [evaluator, setEvaluator] = useState('none');
+  
+  // Use a ref to track the current count value
+  const countRef = useRef('1');
 
   const handleCountChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setCount(event.target.value);
+    const newValue = event.target.value;
+    // Update both the state and the ref
+    setCount(newValue);
+    countRef.current = newValue;
+    console.log(countRef.current);
+  };
+
+  const handleEvaluatorChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setEvaluator(event.target.value);
   };
 
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
-
-    // Get the current evaluator setting from localStorage
-    const currentEvaluator = localStorage.getItem('selectedEvaluator') || 'none';
+    
+    // Use the ref value which is always up-to-date
+    const countValue = parseInt(countRef.current, 10) || 1;
     
     // Send the message through the regular channel
     handleSubmit(undefined, {
       experimental_attachments: attachments,
       data: { 
-        count: parseInt(count, 10) || 1,
-        evaluator: currentEvaluator 
+        count: countValue,
+        evaluator: evaluator
       },
     });
 
@@ -138,7 +149,8 @@ function PureMultimodalInput({
     setLocalStorageInput,
     width,
     chatId,
-    count,
+    // Remove count from dependencies since we're using the ref
+    evaluator,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -266,7 +278,7 @@ function PureMultimodalInput({
       <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
         <AttachmentsButton fileInputRef={fileInputRef} status={status} />
         <CountSelector count={count} setCount={handleCountChange} />
-        <Evaluator/>
+        <EvaluatorSelector evaluator={evaluator} setEvaluator={handleEvaluatorChange} />
       </div>
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
@@ -333,32 +345,28 @@ const CountSelector = ({ count, setCount }: CountSelectorProps) => {
       onChange={setCount}
       placeholder="Count"
       className="ml-2 rounded-md p-2 hover:dark:bg-zinc-900 hover:bg-zinc-200 w-12 bg-transparent"
+      onBlur={(e) => {
+        if (!e.target.value.trim()) {
+          const event = {
+            target: { value: '1' }
+          } as React.ChangeEvent<HTMLInputElement>;
+          setCount(event);
+        }
+      }}
     />
   );
 };
 
-const Evaluator = () => {
-  const [evaluator, setEvaluator] = useState('none');
+type EvaluatorSelectorProps = {
+  evaluator: string;
+  setEvaluator: (event: React.ChangeEvent<HTMLSelectElement>) => void;
+};
 
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setEvaluator(event.target.value);
-    
-    // Store the selected evaluator in local storage
-    localStorage.setItem('selectedEvaluator', event.target.value);
-  };
-
-  // Load selected evaluator from local storage on component mount
-  useEffect(() => {
-    const savedEvaluator = localStorage.getItem('selectedEvaluator');
-    if (savedEvaluator) {
-      setEvaluator(savedEvaluator);
-    }
-  }, []);
-
+const EvaluatorSelector = ({ evaluator, setEvaluator }: EvaluatorSelectorProps) => {
   return (
     <select
       value={evaluator}
-      onChange={handleChange}
+      onChange={setEvaluator}
       className="ml-2 rounded-md p-2 hover:dark:bg-zinc-900 hover:bg-zinc-200 w-32 bg-transparent"
       data-testid="evaluator-selector"
     >
