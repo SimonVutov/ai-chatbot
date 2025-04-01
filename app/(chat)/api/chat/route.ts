@@ -66,8 +66,11 @@ export async function POST(request: Request) {
       for (let i = 0; i < count; i++) {
         const assistantMessage = await generateAssistantMessage(messages[messages.length - 1]);
         console.log("Assistant Message:", assistantMessage.text);
-        assistantMessages.push(assistantMessage);
+        // Store just the text for simplicity
+        assistantMessages.push({ text: assistantMessage.text });
       }
+      
+      console.log("Generated assistantMessages array:", JSON.stringify(assistantMessages));
     }
 
     const session = await auth();
@@ -125,7 +128,7 @@ export async function POST(request: Request) {
     });
 
     console.log("Message with metadata:", partsWithMetadata);
-    console.log("Assistant Messages:", partsWithMetadata[0]);
+    console.log("Assistant Messages array:", assistantMessages);
     // TODO: continue here. Save them, have a button to show raw data on left of comment
     // have a button to show each evaluation result and a score out of 100
 
@@ -176,20 +179,36 @@ export async function POST(request: Request) {
                   responseMessages: response.messages,
                 });
 
+                // Create parts with metadata for assistant message
+                const assistantPartsWithMetadata = [
+                  ...(assistantMessage.parts || []),
+                  {
+                    type: 'metadata',
+                    metadata: {
+                      assistantMessages: assistantMessages,
+                      evaluationSet: evaluations
+                    }
+                  }
+                ];
+
+                console.log("Saving assistant message with metadata:", {
+                  assistantMessages,
+                  evaluations
+                });
+
                 await saveMessages({
                   messages: [
                     {
                       id: assistantId,
                       chatId: id,
                       role: assistantMessage.role,
-                      parts: assistantMessage.parts,
+                      parts: assistantPartsWithMetadata,
                       attachments:
                         assistantMessage.experimental_attachments ?? [],
                       createdAt: new Date(),
                     },
                   ],
                 });
-                console.log("assistantMessage Parts after being saved:", assistantMessage);
               } catch (_) {
               }
             }
