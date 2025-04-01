@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { memo, useState } from 'react';
 import type { Vote } from '@/lib/db/schema';
 import { DocumentToolCall, DocumentToolResult } from './document';
-import { ChevronDownIcon, ChevronUpIcon, PencilEditIcon, SparklesIcon } from './icons';
+import { PencilEditIcon, SparklesIcon } from './icons';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 import { PreviewAttachment } from './preview-attachment';
@@ -19,7 +19,6 @@ import { MessageEditor } from './message-editor';
 import { DocumentPreview } from './document-preview';
 import { MessageReasoning } from './message-reasoning';
 import { UseChatHelpers } from '@ai-sdk/react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
 
 const PurePreviewMessage = ({
   chatId,
@@ -39,32 +38,6 @@ const PurePreviewMessage = ({
   isReadonly: boolean;
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
-  const [isAlternativesOpen, setIsAlternativesOpen] = useState(false);
-
-  // Extract assistantMessages from metadata if available
-  let assistantMessages: any[] = [];
-  try {
-    // Debug the entire message structure
-    console.log("Full message structure:", message.id, JSON.stringify(message, null, 2));
-    
-    // Use type assertion to handle the metadata
-    const metadataPart = message.parts?.find((part: any) => part.type === 'metadata') as any;
-    console.log("Metadata part found:", message.id, metadataPart ? JSON.stringify(metadataPart, null, 2) : "No metadata part found");
-    
-    if (metadataPart?.metadata?.assistantMessages) {
-      assistantMessages = metadataPart.metadata.assistantMessages;
-      console.log("Found assistantMessages in message:", message.id, JSON.stringify(assistantMessages, null, 2));
-    }
-  } catch (error) {
-    console.error('Error extracting assistantMessages:', error);
-  }
-
-  // Debug output for message parts
-  console.log("Message parts:", message.id, message.parts?.map(p => ({ type: p.type, keys: Object.keys(p) })));
-  
-  // For debugging - check if we have alternatives
-  const hasAlternatives = assistantMessages.length > 0;
-  console.log("Has alternatives:", hasAlternatives, "Count:", assistantMessages.length);
 
   return (
     <AnimatePresence>
@@ -93,18 +66,6 @@ const PurePreviewMessage = ({
           )}
 
           <div className="flex flex-col gap-4 w-full">
-            {message.role === 'assistant' && assistantMessages.length > 0 && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-                <button 
-                  onClick={() => setIsAlternativesOpen(!isAlternativesOpen)}
-                  className="inline-flex items-center px-2 py-1 rounded-full bg-muted/50 text-muted-foreground hover:bg-muted cursor-pointer"
-                >
-                  <span className="mr-1">{isAlternativesOpen ? <ChevronUpIcon size={12} /> : <ChevronDownIcon size={12} />}</span> 
-                  {assistantMessages.length} {assistantMessages.length == 1 ? "alternative" : "alternatives"}
-                </button>
-              </div>
-            )}
-
             {message.experimental_attachments && (
               <div
                 data-testid={`message-attachments`}
@@ -252,31 +213,6 @@ const PurePreviewMessage = ({
                 }
               }
             })}
-
-            {message.role === 'assistant' && assistantMessages.length > 0 && (
-              <Collapsible
-                open={isAlternativesOpen}
-                onOpenChange={setIsAlternativesOpen}
-                className="w-full border rounded-md bg-muted/50 mt-2"
-              >
-                <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/80 hidden">
-                  <h4 className="text-sm font-semibold">Alternative Responses ({assistantMessages.length})</h4>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="p-0 h-8 w-8 hover:bg-muted">
-                      {isAlternativesOpen ? <ChevronUpIcon size={16} /> : <ChevronDownIcon size={16} />}
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
-                <CollapsibleContent className="px-4 py-2 space-y-2">
-                  {assistantMessages.map((altMessage, idx) => (
-                    <div key={idx} className="p-2 border rounded-md bg-background">
-                      <div className="text-xs text-muted-foreground mb-1">Alternative {idx + 1}</div>
-                      <Markdown>{typeof altMessage === 'string' ? altMessage : altMessage.text}</Markdown>
-                    </div>
-                  ))}
-                </CollapsibleContent>
-              </Collapsible>
-            )}
 
             {!isReadonly && (
               <MessageActions
